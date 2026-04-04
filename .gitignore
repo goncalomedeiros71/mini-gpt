@@ -1,0 +1,27 @@
+# Modelo treinado (ficheiro grande)
+mini_gpt.pt
+
+# Dados de treino
+input.txt
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Ambientes virtuais
+venv/
+.venv/
+env/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# IDEs
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
