@@ -1,5 +1,6 @@
 # Modelo treinado (ficheiro grande)
 mini_gpt.pt
+model.pt
 
 # Dados de treino
 input.txt
