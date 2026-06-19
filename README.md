@@ -125,7 +125,43 @@ python main.py
 ```
 Then choose a mode:
 1. **Os Lusíadas** — long generation from an optional prompt
-2. **Autocomplete** — top character suggestions for the next position
+2. **Autocomplete** — whole-word suggestions for what comes next
+
+### Example: autocomplete (mode 2)
+
+The autocomplete is "smart": if the phrase ends mid-word it completes that word; if the word is already finished it suggests the next one.
+
+```
+Frase: As armas e os 
+
+--- AUTOCOMPLETE ---
+
+1. soberbos
+2. seus
+3. descuidos
+4. fingidos
+5. conheceu
+```
+
+### Example: long generation (mode 1)
+
+```
+Prompt (ENTER para vazio):
+
+--- LUSÍADAS ---
+
+ donde mal estavam, tempo e do caminho;
+Somente nas mãos de longe de povo;
+"Não ânimo a mãe dousadia,
+Que por tempo armas que o filho estavam,
+Por das seus exército ferro excelente.
+
+23
+"Eis logo a Deus o da causa deseja
+A Moura de Deus forte e que profende;
+Que em tanto da mal e estão por arma,
+Da s
+```
 
 ## Text Generation
 

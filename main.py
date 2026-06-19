@@ -4,7 +4,7 @@ from config import Config
 from model.gpt import MiniGPT
 from data.corpus import load_text
 from data.tokenizer import CharTokenizer
-from inference.modes import generate_long, autocomplete
+from inference.modes import generate_long, autocomplete_word
 
 
 # LOAD DATA SÓ PARA TOKENIZER
@@ -46,7 +46,7 @@ elif mode == "2":
     prompt = input("Frase: ")
     print("\n--- AUTOCOMPLETE ---\n")
 
-    suggestions = autocomplete(model, tokenizer, prompt)
+    suggestions = autocomplete_word(model, tokenizer, prompt)
 
     for i, s in enumerate(suggestions, 1):
         print(f"{i}. {s}")
