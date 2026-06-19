@@ -1,3 +1,4 @@
+import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -16,7 +17,18 @@ class MiniGPT(nn.Module):
         self.ln_f = nn.LayerNorm(Config.n_embd)
         self.lm_head = nn.Linear(Config.n_embd, vocab_size)
 
+        # Weight tying: partilhar a matriz de embedding com a projeção final.
+        # Reduz parâmetros e costuma melhorar a qualidade.
+        self.lm_head.weight = self.token_embedding.weight
+
         self.apply(self._init_weights)
+
+        # Init escalado nas projeções residuais (estilo GPT-2): controla a
+        # variância acumulada ao longo das n_layer ligações residuais.
+        scale = 0.02 / math.sqrt(2 * Config.n_layer)
+        for module in self.modules():
+            if getattr(module, "RESIDUAL_SCALE", False):
+                nn.init.normal_(module.weight, 0.0, scale)
 
     def _init_weights(self, module):
         if isinstance(module, nn.Linear):

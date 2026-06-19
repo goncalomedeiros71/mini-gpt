@@ -8,12 +8,28 @@ class Trainer:
         self.model = model.to(Config.device)
         self.dataset = dataset
 
-        self.optimizer = torch.optim.AdamW(model.parameters(), lr=Config.learning_rate)
+        self.optimizer = self._build_optimizer()
 
         self.checkpoint_path = "mini_gpt.pt"
         self.start_iter = 0
+        self.best_val = float("inf")
 
         self._load_checkpoint()
+
+    # ---------------- OPTIMIZER ----------------
+    def _build_optimizer(self):
+        # Weight decay só em tensores 2D (matrizes de pesos); biases e LayerNorm
+        # ficam de fora — convenção GPT-2.
+        decay, no_decay = [], []
+        for p in self.model.parameters():
+            if not p.requires_grad:
+                continue
+            (decay if p.dim() >= 2 else no_decay).append(p)
+        groups = [
+            {"params": decay, "weight_decay": Config.weight_decay},
+            {"params": no_decay, "weight_decay": 0.0},
+        ]
+        return torch.optim.AdamW(groups, lr=Config.learning_rate)
 
     # ---------------- CHECKPOINT ----------------
     def _load_checkpoint(self):
@@ -23,16 +39,18 @@ class Trainer:
             self.model.load_state_dict(checkpoint["model"])
             self.optimizer.load_state_dict(checkpoint["optimizer"])
             self.start_iter = checkpoint.get("iter", 0)
+            self.best_val = checkpoint.get("best_val", float("inf"))
 
             print(f"Checkpoint carregado — a continuar do iter {self.start_iter}")
         else:
             print("Sem checkpoint — treino do zero.")
 
-    def _save_checkpoint(self, iter):
+    def _save_checkpoint(self, iter, val_loss):
         torch.save({
             "model": self.model.state_dict(),
             "optimizer": self.optimizer.state_dict(),
-            "iter": iter
+            "iter": iter,
+            "best_val": val_loss,
         }, self.checkpoint_path)
 
     # ---------------- LR SCHEDULE ----------------
@@ -69,9 +87,17 @@ class Trainer:
 
             if iter % Config.eval_interval == 0:
                 losses = self.estimate_loss()
-                print(f"step {iter}: train {losses['train']:.4f} | val {losses['val']:.4f} | lr {lr:.2e}")
+                val = losses['val'].item()
 
-                self._save_checkpoint(iter)
+                # Guarda só quando a val loss melhora (early-stopping implícito):
+                # ficamos com o melhor modelo, não com o último (que faz overfit).
+                marker = ""
+                if val < self.best_val:
+                    self.best_val = val
+                    self._save_checkpoint(iter, val)
+                    marker = "  <- guardado (melhor val)"
+
+                print(f"step {iter}: train {losses['train']:.4f} | val {val:.4f} | lr {lr:.2e}{marker}")
 
             xb, yb = self.dataset.get_batch('train')
             _, loss = self.model(xb, yb)

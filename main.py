@@ -2,13 +2,13 @@ import torch
 import os
 from config import Config
 from model.gpt import MiniGPT
+from data.corpus import load_text
 from data.tokenizer import CharTokenizer
 from inference.modes import generate_long, autocomplete
 
 
 # LOAD DATA SÓ PARA TOKENIZER
-with open("input.txt", "r", encoding="utf-8") as f:
-    text = f.read()
+text = load_text("input.txt")
 
 tokenizer = CharTokenizer(text)
 

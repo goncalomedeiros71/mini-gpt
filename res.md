@@ -1,30 +1,43 @@
 # Resultados e Hiperparâmetros — MiniGPT
 
+> Para a avaliação completa (perplexity, BPC, top-k) e o histórico de melhorias,
+> ver [RESULTADOS.md](RESULTADOS.md).
+
 ## Resultados do treino
 
-Treinado em **337,640 caracteres** (Os Lusíadas), com **2.73M de parâmetros** numa GPU CUDA.
+Treinado em **318,363 caracteres** (Os Lusíadas, sem boilerplate do Gutenberg),
+com **2.73M de parâmetros** numa GPU CUDA. Guarda-se o checkpoint com **menor val
+loss** (early-stopping implícito), não o último.
 
 | Step | Train Loss | Val Loss | LR |
 |------|-----------|----------|----|
-| 0    | 4.7907    | 4.7795   | 0.00e+00 |
-| 500  | 2.0574    | 3.1228   | 3.99e-04 |
-| 1000 | 1.7573    | 2.8694   | 3.90e-04 |
-| 1500 | 1.5728    | 2.7936   | 3.73e-04 |
-| 2000 | 1.4358    | 2.8161   | 3.50e-04 |
-| 2500 | 1.3358    | 2.7516   | 3.20e-04 |
-| 3000 | 1.2636    | 2.6759   | 2.86e-04 |
-| 3500 | 1.1800    | 2.7281   | 2.48e-04 |
-| 4000 | 1.1074    | 2.8086   | 2.08e-04 |
-| 4500 | 1.0449    | 2.8244   | 1.68e-04 |
-| 5000 | 0.9860    | 2.7267   | 1.29e-04 |
-| 5500 | 0.9359    | 2.8494   | 9.31e-05 |
-| 6000 | 0.8965    | 2.7350   | 6.15e-05 |
-| 6500 | 0.8642    | 2.9502   | 3.54e-05 |
-| 7000 | 0.8550    | 2.8671   | 1.60e-05 |
-| 7500 | 0.8405    | 2.8389   | 4.04e-06 |
-| 7999 | 0.8476    | 2.9594   | 1.62e-11 |
+| 0    | 4.6134    | 4.6135   | 0.00e+00 |
+| 250  | 2.3132    | 2.3614   | 4.00e-04 |
+| 500  | 2.0886    | 2.1492   | 3.92e-04 |
+| 750  | 1.8901    | 1.9800   | 3.73e-04 |
+| 1000 | 1.7153    | 1.8479   | 3.45e-04 |
+| 1250 | 1.5845    | 1.7614   | 3.08e-04 |
+| 1500 | 1.4879    | 1.7013   | 2.65e-04 |
+| 1750 | 1.4115    | 1.6532   | 2.19e-04 |
+| 2000 | 1.3508    | 1.6321   | 1.72e-04 |
+| 2250 | 1.3113    | 1.6172   | 1.26e-04 |
+| 2500 | 1.2685    | 1.6111   | 8.40e-05 |
+| 2750 | 1.2396    | 1.6058   | 4.89e-05 |
+| **3000** | **1.2243** | **1.5936** | 2.22e-05 | ← melhor val (guardado) |
+| 3250 | 1.2176    | 1.6000   | 5.64e-06 |
 
-> O **train loss** desce consistentemente até ~0.84. O **val loss** estabiliza em ~2.7–2.9 — indica algum overfitting, esperado num dataset pequeno. Para melhorar, aumenta `dropout` ou usa um corpus maior.
+> Com regularização (`dropout` 0.2 + weight decay) o **gap train/val é saudável**
+> (1.22 vs 1.59), ao contrário da versão anterior (0.50 vs 2.08, overfitting grave).
+> O val loss estabiliza em ~1.59 e o melhor checkpoint é o do step 3000.
+
+### Métricas finais (test set, nunca visto)
+
+| Métrica | val | test |
+|---|---|---|
+| Perplexity | 4.94 | **4.81** |
+| BPC | 2.30 | 2.27 |
+| Top-1 accuracy | 52.0% | 53.5% |
+| Top-5 accuracy | 83.8% | 84.1% |
 
 ---
 
@@ -35,12 +48,13 @@ Treinado em **337,640 caracteres** (Os Lusíadas), com **2.73M de parâmetros** 
 | Parâmetro | Valor | Explicação |
 |---|---|---|
 | `batch_size` | `32` | Sequências processadas em paralelo por step. Mais = treino mais estável, mas mais VRAM. |
-| `block_size` | `128` | Contexto máximo em caracteres. O modelo só "vê" os últimos 128 chars ao gerar. Aumentar melhora coerência a longo prazo mas tem custo quadrático. |
-| `max_iters` | `8000` | Steps totais de treino. Com ~337k chars, 8000 é suficiente — mais iters aumentaria o overfitting. |
+| `block_size` | `256` | Contexto máximo em caracteres. O modelo só "vê" os últimos 256 chars ao gerar. Aumentar melhora coerência a longo prazo mas tem custo quadrático. |
+| `max_iters` | `3500` | Steps totais de treino. Com ~318k chars, o val loss estabiliza por volta do step 3000 — treinar mais só aumentaria o overfitting. |
 | `learning_rate` | `4e-4` | Taxa de aprendizagem de pico, ajustada pelo scheduler ao longo do treino. |
+| `weight_decay` | `0.1` | Regularização L2, aplicada só a matrizes de peso (2D), não a biases/LayerNorm. Combate o overfitting. |
 | `grad_clip` | `1.0` | Se a norma dos gradientes exceder 1.0, são escalados. Previne instabilidade no início do treino. |
-| `eval_interval` | `500` | De quantos em quantos steps se imprime o loss. Não afeta o treino. |
-| `eval_iters` | `20` | Batches usados para estimar o loss em cada avaliação. Mais = estimativa mais precisa mas mais lenta. |
+| `eval_interval` | `250` | De quantos em quantos steps se avalia e se tenta guardar o melhor checkpoint. |
+| `eval_iters` | `40` | Batches usados para estimar o loss em cada avaliação. Mais = estimativa mais precisa mas mais lenta. |
 
 ### Arquitetura
 
@@ -49,14 +63,18 @@ Treinado em **337,640 caracteres** (Os Lusíadas), com **2.73M de parâmetros** 
 | `n_embd` | `192` | Dimensão dos embeddings — tamanho da representação interna de cada token. GPT-2 small usa 768. |
 | `n_head` | `6` | Cabeças de atenção em paralelo. Cada uma aprende padrões diferentes (rima, sintaxe, etc). `head_size = 192 / 6 = 32`. |
 | `n_layer` | `6` | Blocos Transformer empilhados. Mais camadas = mais capacidade, mas mais lento e mais overfitting. |
-| `dropout` | `0.1` | Desativa 10% dos neurónios aleatoriamente durante o treino para reduzir overfitting. Desativado na geração. |
+| `dropout` | `0.2` | Desativa 20% dos neurónios aleatoriamente durante o treino para reduzir overfitting. Desativado na geração. |
+
+Extras de arquitetura: **weight tying** (embedding partilhado com a projeção
+final), **atenção vetorizada** (`F.scaled_dot_product_attention`), **init escalado
+GPT-2** nas projeções residuais e **GELU** no FeedForward.
 
 ### Learning Rate Scheduler
 
 | Parâmetro | Valor | Explicação |
 |---|---|---|
 | `warmup_iters` | `200` | Nos primeiros 200 steps o LR sobe linearmente de 0 até `4e-4`. Evita updates grandes quando os pesos ainda são aleatórios. |
-| — | cosine decay | Após o warmup, o LR segue uma curva cosseno até quase 0 no step final (`1.62e-11`). O modelo convergiu completamente. |
+| — | cosine decay | Após o warmup, o LR segue uma curva cosseno até quase 0 no step final. |
 
 ### Geração de Texto
 
@@ -64,25 +82,3 @@ Treinado em **337,640 caracteres** (Os Lusíadas), com **2.73M de parâmetros** 
 |---|---|---|
 | `temperature` | `0.85` | Controla aleatoriedade. `< 1` → texto mais focado. `> 1` → mais criativo mas incoerente. `0.85` é um bom equilíbrio. |
 | `top_k` | `50` | Só os 50 tokens mais prováveis são considerados em cada passo. Elimina escolhas absurdas sem perder variedade. |
-
----
-
-## Exemplo de output
-
-**Com prompt** `"Ó mar salgado, quanto do teu sal"`:
-```
-Ó mar salgado, quanto do teu salgado
-Onde vê a vila de ventura mandado
-Os primeiros ânimos deleitos
-Piloto, fazendo, brando, afeiçoado:
-Já não vencerá nas bombardantes...
-```
-
-**Sem prompt** (geração livre):
-```
-Os povos inimigos do Oriente,
-Que eu foi vosso arvor poderoso.
-
-"E vereis ao Rei manda que chegado
-Muito estava já será na constante?...
-```
